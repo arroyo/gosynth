@@ -1,0 +1,2 @@
+# gosynth
+Simple synth TUI
