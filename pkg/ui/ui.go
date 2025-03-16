@@ -24,6 +24,8 @@ type Model struct {
 	synth    *synth.Synth
 	realTime bool
 	selected int
+	buffer   string    // Add buffer for double buffering
+	lastDraw time.Time // Track last draw time
 }
 
 // NewModel creates a new UI model
@@ -33,6 +35,7 @@ func NewModel(s *synth.Synth) Model {
 		synth:    s,
 		realTime: false,
 		selected: 0,
+		lastDraw: time.Now(),
 	}
 }
 
@@ -40,7 +43,7 @@ func NewModel(s *synth.Synth) Model {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
-		tea.Every(time.Second/60, func(time.Time) tea.Msg {
+		tea.Every(time.Second/30, func(time.Time) tea.Msg {
 			return frameMsg{}
 		}),
 	)
@@ -56,13 +59,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle window resize
 		return m, nil
 	case frameMsg:
-		// Request next frame
-		return m, tea.Batch(
-			m.spinner.Tick,
-			tea.Every(time.Second/60, func(time.Time) tea.Msg {
-				return frameMsg{}
-			}),
-		)
+		// Only update if enough time has passed or if we're in real-time mode
+		if m.realTime || time.Since(m.lastDraw) > time.Second/30 {
+			m.lastDraw = time.Now()
+			m.buffer = m.render() // Pre-render the frame
+			return m, tea.Batch(
+				m.spinner.Tick,
+				tea.Every(time.Second/30, func(time.Time) tea.Msg {
+					return frameMsg{}
+				}),
+			)
+		}
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -290,8 +298,8 @@ func (m Model) drawWaveform() string {
 	// Convert buffer to string with a fancier border and colors
 	var result strings.Builder
 	result.WriteString("\n")
-	result.WriteString(waveformStyle.Render("Waveform Display") + " ")
-	result.WriteString(carrierStyle.Render("(carrier: ·)") + " ")
+	result.WriteString(waveformStyle.Render("Waveform Display "))
+	// result.WriteString(carrierStyle.Render("(carrier: · )"))
 	result.WriteString(waveformStyle.Render("(modulated: ░▒▓█)") + "\n")
 
 	// Top border
@@ -371,8 +379,8 @@ func clamp(value, min, max int) int {
 	return value
 }
 
-// View renders the application UI
-func (m Model) View() string {
+// render pre-renders the entire UI
+func (m Model) render() string {
 	// Create base styles for menu items
 	baseStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -390,7 +398,7 @@ func (m Model) View() string {
 
 	var s strings.Builder
 
-	s.WriteString(baseStyle.Render("Synthesizer Controls") + "\n\n")
+	s.WriteString(baseStyle.Render("Gosynth synthesizer controls") + "\n\n")
 
 	// Carrier Frequency
 	if m.selected == 0 {
@@ -459,4 +467,12 @@ func (m Model) View() string {
 			Background(lipgloss.Color("#000000")).
 			Render(s.String()),
 	)
+}
+
+// View returns the pre-rendered UI
+func (m Model) View() string {
+	if m.buffer == "" {
+		m.buffer = m.render()
+	}
+	return m.buffer
 }
