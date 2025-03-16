@@ -10,11 +10,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gordonklaus/portaudio"
+	"gitlab.com/gomidi/midi/v2"
+	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 )
 
 const (
 	sampleRate      = 44100
-	carrierFreq     = 120.0 // Base frequency in Hz
 	minModFreq      = 100.0 // Minimum modulation frequency in Hz
 	maxModFreq      = 600.0 // Maximum modulation frequency in Hz
 	freqSweepTime   = .100  // Time to finish 10Hz of sweep
@@ -43,6 +44,16 @@ func (sv *SmoothValue) set(value float64) {
 
 func (sv *SmoothValue) get() float64 {
 	return sv.value
+}
+
+// Convert MIDI note to frequency
+func midiNoteToFreq(note uint8) float64 {
+	return 440.0 * math.Pow(2, (float64(note)-69.0)/12.0)
+}
+
+// MIDIMsg represents a MIDI message
+type MIDIMsg struct {
+	Note uint8
 }
 
 // SynthModel represents the application state
@@ -485,10 +496,23 @@ func main() {
 	}
 	defer portaudio.Terminate()
 
+	// Find the first available MIDI input device
+	ports := midi.GetInPorts()
+	if len(ports) == 0 {
+		fmt.Println("No MIDI input devices available")
+		return
+	}
+
+	inPort, err := midi.InPort(0)
+	if err != nil {
+		fmt.Printf("Error opening MIDI input: %v\n", err)
+		return
+	}
+
 	// Create initial model
 	model := &SynthModel{
 		spinner:     spinner.New(),
-		carrierFreq: SmoothValue{value: carrierFreq},
+		carrierFreq: SmoothValue{value: 440.0}, // Start with A4 note
 		minModFreq:  SmoothValue{value: minModFreq},
 		maxModFreq:  SmoothValue{value: maxModFreq},
 		sweepTime:   SmoothValue{value: freqSweepTime},
@@ -497,6 +521,19 @@ func main() {
 		realTime:    false,
 		selected:    0,
 	}
+
+	// Set up MIDI message handling
+	stopListening, err := midi.ListenTo(inPort, func(msg midi.Message, timestampms int32) {
+		var channel, key, velocity uint8
+		if msg.GetNoteStart(&channel, &key, &velocity) {
+			model.carrierFreq.set(midiNoteToFreq(key))
+		}
+	})
+	if err != nil {
+		fmt.Printf("Error setting up MIDI listener: %v\n", err)
+		return
+	}
+	defer stopListening()
 
 	// Open default audio output stream with callback
 	stream, err := portaudio.OpenDefaultStream(0, 1, float64(sampleRate), 1024, func(out []float32) {
