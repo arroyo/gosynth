@@ -1,6 +1,8 @@
 # gosynth
 A simple synth TUI
 
+![Screenshot of the Text User Interface](screenshot.png)
+
 ## Installation
 
 Install audio and midi drivers
