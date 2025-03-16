@@ -1,7 +1,7 @@
 # gosynth
 A simple synth TUI
 
-![Screenshot of the Text User Interface](screenshot.png)
+![Screenshot of the Text User Interface](media/screenshot.png)
 
 A terminal-based FM synthesizer written in Go, featuring MIDI input support and real-time waveform visualization.
 
