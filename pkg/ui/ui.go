@@ -298,9 +298,6 @@ func (m Model) drawWaveform() string {
 	// Convert buffer to string with a fancier border and colors
 	var result strings.Builder
 	result.WriteString("\n")
-	result.WriteString(waveformStyle.Render("Waveform Display "))
-	// result.WriteString(carrierStyle.Render("(carrier: · )"))
-	result.WriteString(waveformStyle.Render("(modulated: ░▒▓█)") + "\n")
 
 	// Top border
 	result.WriteString(borderStyle.Render("╔" + strings.Repeat("═", waveformWidth) + "╗\n"))
@@ -328,6 +325,10 @@ func (m Model) drawWaveform() string {
 
 	// Bottom border
 	result.WriteString(borderStyle.Render("╚" + strings.Repeat("═", waveformWidth) + "╝\n"))
+
+	// Legend
+	result.WriteString(waveformStyle.Render("\nWaveform Display "))
+	result.WriteString(waveformStyle.Render("(modulated: ░▒▓█)") + "\n")
 
 	return result.String()
 }
@@ -398,7 +399,7 @@ func (m Model) render() string {
 
 	var s strings.Builder
 
-	s.WriteString(baseStyle.Render("Gosynth synthesizer controls") + "\n\n")
+	s.WriteString(baseStyle.Render("Gosynth synthesizer - Use keyboard arrows or MIDI controller") + "\n\n")
 
 	// Carrier Frequency
 	if m.selected == 0 {
@@ -455,8 +456,12 @@ func (m Model) render() string {
 	}
 	s.WriteString(baseStyle.Render(fmt.Sprintf("%v", m.realTime)) + "\n\n")
 
-	// Add instructions with base style
-	s.WriteString(baseStyle.Render("\nUse ↑↓ to select, ←→ to adjust, q to quit\n"))
+	// Update instructions to include both MIDI and keyboard controls
+	s.WriteString(baseStyle.Render("\nControls:") + "\n")
+	s.WriteString(baseStyle.Render("- Use ↑↓ to select parameter") + "\n")
+	s.WriteString(baseStyle.Render("- Use ←→ to adjust value") + "\n")
+	s.WriteString(baseStyle.Render("- MIDI keyboard will control carrier frequency") + "\n")
+	s.WriteString(baseStyle.Render("- Press q to quit") + "\n")
 
 	// Add waveform visualization
 	s.WriteString(m.drawWaveform())

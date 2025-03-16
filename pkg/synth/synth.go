@@ -137,28 +137,23 @@ func (s *Synth) Start() error {
 		return err
 	}
 
-	// Find the first available MIDI input device
+	// Try to initialize MIDI, but continue even if it fails
 	ports := midi.GetInPorts()
-	if len(ports) == 0 {
-		return nil // No MIDI devices is not an error
-	}
-
-	inPort, err := midi.InPort(0)
-	if err != nil {
-		return err
-	}
-
-	// Set up MIDI message handling
-	stopListening, err := midi.ListenTo(inPort, func(msg midi.Message, timestampms int32) {
-		var channel, key, velocity uint8
-		if msg.GetNoteStart(&channel, &key, &velocity) {
-			s.CarrierFreq.Set(MIDINoteToFreq(key))
+	if len(ports) > 0 {
+		inPort, err := midi.InPort(0)
+		if err == nil {
+			// Set up MIDI message handling
+			stopListening, err := midi.ListenTo(inPort, func(msg midi.Message, timestampms int32) {
+				var channel, key, velocity uint8
+				if msg.GetNoteStart(&channel, &key, &velocity) {
+					s.CarrierFreq.Set(MIDINoteToFreq(key))
+				}
+			})
+			if err == nil {
+				s.stopMIDI = stopListening
+			}
 		}
-	})
-	if err != nil {
-		return err
 	}
-	s.stopMIDI = stopListening
 
 	// Open default audio output stream with callback
 	stream, err := portaudio.OpenDefaultStream(0, 1, float64(SampleRate), 1024, func(out []float32) {
