@@ -22,9 +22,9 @@ const (
 	modulationIndex = 0.5   // Modulation intensity
 	waveformWidth   = 100   // Width of the waveform display
 	waveformHeight  = 20    // Height of the waveform display
-	clipThreshold   = 0.5   // Threshold where soft clipping begins
-	clipHardLimit   = 0.75  // Maximum amplitude after clipping
-	initialVolume   = 0.8   // Initial volume level
+	clipThreshold   = 0.6   // Threshold where soft clipping begins
+	clipHardLimit   = 0.85  // Maximum amplitude after clipping
+	initialVolume   = 0.75  // Initial volume level
 )
 
 var timeIndex float64 = 0
@@ -121,9 +121,9 @@ func (m *SynthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case 3:
 						m.sweepTime.set(math.Max(0.01, m.sweepTime.value-0.01))
 					case 4:
-						m.modIndex.set(math.Max(0, m.modIndex.value-0.1))
+						m.modIndex.set(math.Max(0, m.modIndex.value-0.05))
 					case 5:
-						m.volume.set(math.Max(0, m.volume.value-0.1))
+						m.volume.set(math.Max(0, m.volume.value-0.05))
 					}
 				case "right":
 					switch m.selected {
@@ -136,9 +136,9 @@ func (m *SynthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case 3:
 						m.sweepTime.set(math.Min(1.0, m.sweepTime.value+0.01))
 					case 4:
-						m.modIndex.set(math.Min(1.0, m.modIndex.value+0.1))
+						m.modIndex.set(math.Min(1.0, m.modIndex.value+0.05))
 					case 5:
-						m.volume.set(math.Min(1.0, m.volume.value+0.1))
+						m.volume.set(math.Min(1.0, m.volume.value+0.05))
 					}
 				}
 			}
@@ -362,11 +362,10 @@ func (m *SynthModel) View() string {
 
 	// Carrier Frequency
 	if m.selected == 0 {
-		s += selectedStyle.Render("> Carrier Frequency: ")
+		s += selectedStyle.Render(fmt.Sprintf("> Carrier Frequency: %.1f Hz", m.carrierFreq.value)) + "\n"
 	} else {
-		s += baseStyle.Render("  Carrier Frequency: ")
+		s += baseStyle.Render(fmt.Sprintf("  Carrier Frequency: %.1f Hz", m.carrierFreq.value)) + "\n"
 	}
-	s += baseStyle.Render(fmt.Sprintf("%.1f Hz", m.carrierFreq.value)) + "\n"
 
 	// Min Modulator Frequency
 	if m.selected == 1 {
