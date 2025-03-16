@@ -52,6 +52,9 @@ type frameMsg struct{}
 // Update handles application updates
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Handle window resize
+		return m, nil
 	case frameMsg:
 		// Request next frame
 		return m, tea.Batch(
@@ -381,72 +384,79 @@ func (m Model) View() string {
 
 	// Create container style for the entire app
 	containerStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("#000000"))
+		Background(lipgloss.Color("#000000")).
+		MarginLeft(2).
+		MarginRight(2)
 
-	var s string
-	s += baseStyle.Render("Synthesizer Controls") + "\n\n"
+	var s strings.Builder
+
+	s.WriteString(baseStyle.Render("Synthesizer Controls") + "\n\n")
 
 	// Carrier Frequency
 	if m.selected == 0 {
-		s += selectedStyle.Render(fmt.Sprintf("> Carrier Frequency: %.1f Hz", m.synth.CarrierFreq.Get())) + "\n"
+		s.WriteString(selectedStyle.Render(fmt.Sprintf("> Carrier Frequency: %.1f Hz", m.synth.CarrierFreq.Get())) + "\n")
 	} else {
-		s += baseStyle.Render(fmt.Sprintf("  Carrier Frequency: %.1f Hz", m.synth.CarrierFreq.Get())) + "\n"
+		s.WriteString(baseStyle.Render(fmt.Sprintf("  Carrier Frequency: %.1f Hz", m.synth.CarrierFreq.Get())) + "\n")
 	}
 
 	// Min Modulator Frequency
 	if m.selected == 1 {
-		s += selectedStyle.Render("> Min Modulator Frequency: ")
+		s.WriteString(selectedStyle.Render("> Min Modulator Frequency: "))
 	} else {
-		s += baseStyle.Render("  Min Modulator Frequency: ")
+		s.WriteString(baseStyle.Render("  Min Modulator Frequency: "))
 	}
-	s += baseStyle.Render(fmt.Sprintf("%.1f Hz", m.synth.MinModFreq.Get())) + "\n"
+	s.WriteString(baseStyle.Render(fmt.Sprintf("%.1f Hz", m.synth.MinModFreq.Get())) + "\n")
 
 	// Max Modulator Frequency
 	if m.selected == 2 {
-		s += selectedStyle.Render("> Max Modulator Frequency: ")
+		s.WriteString(selectedStyle.Render("> Max Modulator Frequency: "))
 	} else {
-		s += baseStyle.Render("  Max Modulator Frequency: ")
+		s.WriteString(baseStyle.Render("  Max Modulator Frequency: "))
 	}
-	s += baseStyle.Render(fmt.Sprintf("%.1f Hz", m.synth.MaxModFreq.Get())) + "\n"
+	s.WriteString(baseStyle.Render(fmt.Sprintf("%.1f Hz", m.synth.MaxModFreq.Get())) + "\n")
 
 	// Sweep Time
 	if m.selected == 3 {
-		s += selectedStyle.Render("> Sweep Time: ")
+		s.WriteString(selectedStyle.Render("> Sweep Time: "))
 	} else {
-		s += baseStyle.Render("  Sweep Time: ")
+		s.WriteString(baseStyle.Render("  Sweep Time: "))
 	}
-	s += baseStyle.Render(fmt.Sprintf("%.2f s", m.synth.SweepTime.Get())) + "\n"
+	s.WriteString(baseStyle.Render(fmt.Sprintf("%.2f s", m.synth.SweepTime.Get())) + "\n")
 
 	// Modulation Index
 	if m.selected == 4 {
-		s += selectedStyle.Render("> Modulation Index: ")
+		s.WriteString(selectedStyle.Render("> Modulation Index: "))
 	} else {
-		s += baseStyle.Render("  Modulation Index: ")
+		s.WriteString(baseStyle.Render("  Modulation Index: "))
 	}
-	s += baseStyle.Render(fmt.Sprintf("%.2f", m.synth.ModIndex.Get())) + "\n"
+	s.WriteString(baseStyle.Render(fmt.Sprintf("%.2f", m.synth.ModIndex.Get())) + "\n")
 
 	// Volume
 	if m.selected == 5 {
-		s += selectedStyle.Render("> Volume: ")
+		s.WriteString(selectedStyle.Render("> Volume: "))
 	} else {
-		s += baseStyle.Render("  Volume: ")
+		s.WriteString(baseStyle.Render("  Volume: "))
 	}
-	s += baseStyle.Render(fmt.Sprintf("%.2f", m.synth.Volume.Get())) + "\n"
+	s.WriteString(baseStyle.Render(fmt.Sprintf("%.2f", m.synth.Volume.Get())) + "\n")
 
 	// Real-time toggle
 	if m.selected == 6 {
-		s += selectedStyle.Render("> Real-time display: ")
+		s.WriteString(selectedStyle.Render("> Real-time display: "))
 	} else {
-		s += baseStyle.Render("  Real-time display: ")
+		s.WriteString(baseStyle.Render("  Real-time display: "))
 	}
-	s += baseStyle.Render(fmt.Sprintf("%v", m.realTime)) + "\n\n"
+	s.WriteString(baseStyle.Render(fmt.Sprintf("%v", m.realTime)) + "\n\n")
 
 	// Add instructions with base style
-	s += baseStyle.Render("\nUse ↑↓ to select, ←→ to adjust, q to quit\n")
+	s.WriteString(baseStyle.Render("\nUse ↑↓ to select, ←→ to adjust, q to quit\n"))
 
 	// Add waveform visualization
-	s += m.drawWaveform()
+	s.WriteString(m.drawWaveform())
 
 	// Apply container style to the entire output
-	return containerStyle.Render(s)
+	return containerStyle.Render(
+		lipgloss.NewStyle().
+			Background(lipgloss.Color("#000000")).
+			Render(s.String()),
+	)
 }
