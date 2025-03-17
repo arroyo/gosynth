@@ -28,8 +28,12 @@ func main() {
 	}
 	defer s.Stop()
 
-	// Create and start the UI
-	p := tea.NewProgram(ui.NewModel(s))
+	// Create and start the UI with proper terminal options
+	p := tea.NewProgram(
+		ui.NewModel(s),
+		tea.WithAltScreen(),       // Use alternate screen buffer
+		tea.WithMouseCellMotion(), // Enable mouse support
+	)
 
 	// Handle OS signals for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -37,6 +41,9 @@ func main() {
 	go func() {
 		<-sigChan
 		s.Stop()
+		// Ensure terminal is in a good state before exiting
+		fmt.Print("\033[?1049l") // Exit alternate screen mode
+		fmt.Print("\033[?25h")   // Show cursor
 		os.Exit(0)
 	}()
 

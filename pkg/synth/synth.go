@@ -9,11 +9,11 @@ import (
 
 const (
 	SampleRate      = 44100
-	MinModFreq      = 100.0 // Minimum modulation frequency in Hz
-	MaxModFreq      = 600.0 // Maximum modulation frequency in Hz
-	FreqSweepTime   = .100  // Time to finish 10Hz of sweep
-	ModulationIndex = 0.5   // Modulation intensity
-	ClipThreshold   = 0.6   // Threshold where soft clipping begins
+	MinModFreq      = 170.0 // Minimum modulation frequency in Hz
+	MaxModFreq      = 580.0 // Maximum modulation frequency in Hz
+	FreqSweepTime   = .300  // Time to finish 10Hz of sweep
+	ModulationIndex = 0.70  // Modulation intensity
+	ClipThreshold   = 0.60  // Threshold where soft clipping begins
 	ClipHardLimit   = 0.85  // Maximum amplitude after clipping
 	InitialVolume   = 0.75  // Initial volume level
 )

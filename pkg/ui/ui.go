@@ -26,16 +26,22 @@ type Model struct {
 	selected int
 	buffer   string    // Add buffer for double buffering
 	lastDraw time.Time // Track last draw time
+	ready    bool      // Track if the model is ready for input
 }
 
 // NewModel creates a new UI model
 func NewModel(s *synth.Synth) Model {
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
 	return Model{
-		spinner:  spinner.New(),
+		spinner:  sp,
 		synth:    s,
 		realTime: false,
 		selected: 0,
 		lastDraw: time.Now(),
+		ready:    false,
 	}
 }
 
@@ -43,6 +49,7 @@ func NewModel(s *synth.Synth) Model {
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
+		tea.EnterAltScreen,
 		tea.Every(time.Second/30, func(time.Time) tea.Msg {
 			return frameMsg{}
 		}),
@@ -56,8 +63,10 @@ type frameMsg struct{}
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// Handle window resize
+		// Mark the model as ready when we receive the first window size event
+		m.ready = true
 		return m, nil
+
 	case frameMsg:
 		// Only update if enough time has passed or if we're in real-time mode
 		if m.realTime || time.Since(m.lastDraw) > time.Second/30 {
@@ -71,19 +80,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 		return m, nil
+
 	case tea.KeyMsg:
+		// Only handle keyboard input if the model is ready
+		if !m.ready {
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
-			return m, tea.Quit
+			return m, tea.Sequence(
+				tea.ExitAltScreen,
+				tea.Quit,
+			)
 		case "up":
 			if m.selected > 0 {
 				m.selected--
+				m.buffer = "" // Clear buffer to force redraw
 			}
 		case "down":
 			if m.selected < 6 {
 				m.selected++
+				m.buffer = "" // Clear buffer to force redraw
 			}
 		case "left", "right":
+			m.buffer = "" // Clear buffer to force redraw
 			if m.selected == 6 {
 				m.realTime = !m.realTime
 			} else {
@@ -327,8 +348,7 @@ func (m Model) drawWaveform() string {
 	result.WriteString(borderStyle.Render("╚" + strings.Repeat("═", waveformWidth) + "╝\n"))
 
 	// Legend
-	result.WriteString(waveformStyle.Render("\nWaveform Display "))
-	result.WriteString(waveformStyle.Render("(modulated: ░▒▓█)") + "\n")
+	result.WriteString(waveformStyle.Render("\nWaveform Display (modulated: ░▒▓█)") + "\n")
 
 	return result.String()
 }
