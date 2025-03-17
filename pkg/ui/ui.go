@@ -243,7 +243,7 @@ func getRainbowColor(intensity float64, timeOffset float64) string {
 		int(b*255))
 }
 
-// drawWaveform creates an ASCII art representation of the waveform
+// drawWaveform renders the waveform visualization
 func (m Model) drawWaveform() string {
 	// Create a buffer for the waveform with double vertical resolution
 	buffer := make([][]rune, waveformHeight)
@@ -272,7 +272,7 @@ func (m Model) drawWaveform() string {
 	// Use current timeIndex for animated display if realTime is true
 	displayTime := 0.0
 	if m.realTime {
-		displayTime = synth.GetTimeIndex()
+		displayTime = m.synth.GetTimeIndex()
 	}
 
 	for i := 0; i < points; i++ {
@@ -324,7 +324,7 @@ func (m Model) drawWaveform() string {
 	result.WriteString(borderStyle.Render("╔" + strings.Repeat("═", waveformWidth) + "╗\n"))
 
 	// Calculate time-based hue offset
-	timeHueOffset := math.Mod(synth.GetTimeIndex()*0.2, 1.0) // Adjust speed of color change here
+	timeHueOffset := math.Mod(m.synth.GetTimeIndex()*0.2, 1.0) // Adjust speed of color change here
 
 	// Waveform content
 	for y, line := range buffer {

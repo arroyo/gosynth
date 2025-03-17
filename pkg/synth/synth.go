@@ -9,16 +9,15 @@ import (
 
 const (
 	SampleRate      = 44100
-	MinModFreq      = 170.0 // Minimum modulation frequency in Hz
-	MaxModFreq      = 580.0 // Maximum modulation frequency in Hz
+	MinModFreq      = 100.0 // Minimum modulation frequency in Hz
+	MaxModFreq      = 600.0 // Maximum modulation frequency in Hz
 	FreqSweepTime   = .300  // Time to finish 10Hz of sweep
-	ModulationIndex = 0.70  // Modulation intensity
-	ClipThreshold   = 0.60  // Threshold where soft clipping begins
+	ModulationIndex = 0.5   // Modulation intensity
+	ClipThreshold   = 0.6   // Threshold where soft clipping begins
 	ClipHardLimit   = 0.85  // Maximum amplitude after clipping
 	InitialVolume   = 0.75  // Initial volume level
+	AudioBufferSize = 2048  // Increased buffer size for more stability
 )
-
-var timeIndex float64 = 0
 
 // SmoothValue represents a parameter value
 type SmoothValue struct {
@@ -47,6 +46,8 @@ type Synth struct {
 	Volume      SmoothValue
 	stream      *portaudio.Stream
 	stopMIDI    func()
+	buffer      []float32 // Add audio buffer
+	timeIndex   float64   // Move timeIndex into the struct
 }
 
 // NewSynth creates a new synthesizer instance
@@ -58,6 +59,8 @@ func NewSynth() *Synth {
 		SweepTime:   SmoothValue{value: FreqSweepTime},
 		ModIndex:    SmoothValue{value: ModulationIndex},
 		Volume:      SmoothValue{value: InitialVolume},
+		buffer:      make([]float32, AudioBufferSize),
+		timeIndex:   0,
 	}
 }
 
@@ -107,7 +110,7 @@ func SoftClip(sample float64) float64 {
 func (s *Synth) AudioCallback(out []float32) {
 	// Process audio
 	for i := range out {
-		t := timeIndex + float64(i)/SampleRate
+		t := s.timeIndex + float64(i)/SampleRate
 
 		// Generate carrier signal
 		carrier := math.Sin(2 * math.Pi * s.CarrierFreq.Get() * t)
@@ -122,11 +125,14 @@ func (s *Synth) AudioCallback(out []float32) {
 		// Apply soft clipping to prevent distortion
 		sample = SoftClip(sample)
 
-		// Apply volume control
-		out[i] = float32(sample * s.Volume.Get())
+		// Apply volume control and store in buffer
+		s.buffer[i] = float32(sample * s.Volume.Get())
 	}
 
-	timeIndex += float64(len(out)) / SampleRate
+	// Copy buffer to output
+	copy(out, s.buffer[:len(out)])
+
+	s.timeIndex += float64(len(out)) / SampleRate
 }
 
 // Start initializes and starts the synthesizer
@@ -155,8 +161,25 @@ func (s *Synth) Start() error {
 		}
 	}
 
-	// Open default audio output stream with callback
-	stream, err := portaudio.OpenDefaultStream(0, 1, float64(SampleRate), 1024, func(out []float32) {
+	// Get default output device
+	defaultDevice, err := portaudio.DefaultOutputDevice()
+	if err != nil {
+		return err
+	}
+
+	// Set up high-priority audio stream with optimal buffer size
+	streamParams := portaudio.StreamParameters{
+		Output: portaudio.StreamDeviceParameters{
+			Device:   defaultDevice,
+			Channels: 1,
+			Latency:  defaultDevice.DefaultHighOutputLatency,
+		},
+		SampleRate:      SampleRate,
+		FramesPerBuffer: AudioBufferSize,
+	}
+
+	// Open audio stream with optimized parameters
+	stream, err := portaudio.OpenStream(streamParams, func(out []float32) {
 		s.AudioCallback(out)
 	})
 	if err != nil {
@@ -181,6 +204,6 @@ func (s *Synth) Stop() error {
 }
 
 // GetTimeIndex returns the current time index
-func GetTimeIndex() float64 {
-	return timeIndex
+func (s *Synth) GetTimeIndex() float64 {
+	return s.timeIndex
 }
